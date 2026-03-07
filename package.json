@@ -1,0 +1,67 @@
+{
+  "name": "crypto-trading-ia",
+  "version": "1.0.0",
+  "description": "Esta es una api de una aplicacion para crear bots de trading con IA",
+  "keywords": [
+    "Traiding",
+    "Cryptocurrencies",
+    "Nodejs",
+    "Typescript",
+    "Bots-Trading",
+    "IA"
+  ],
+  "homepage": "https://github.com/joaquinStrada/api-crypto-trading-IA#readme",
+  "bugs": {
+    "url": "https://github.com/joaquinStrada/api-crypto-trading-IA/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/joaquinStrada/api-crypto-trading-IA.git"
+  },
+  "license": "MIT",
+  "author": "Joaquin Jose Strada",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node dist/index.js",
+    "build": "babel src -d dist --extensions \".ts\"",
+    "types": "tsc",
+    "dev": "nodemon src/index.ts --exec babel-node --extensions \".ts\"",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@babel/polyfill": "^7.12.1",
+    "cookie-parser": "1.4.7",
+    "dotenv": "17.3.1",
+    "express": "5.2.1",
+    "express-fileupload": "1.5.2",
+    "groq-sdk": "0.37.0",
+    "jsonwebtoken": "9.0.3",
+    "minio": "8.0.7",
+    "morgan": "1.10.1",
+    "mysql2": "3.19.0",
+    "nodemon": "3.1.14",
+    "socket.io": "4.8.3",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@babel/cli": "7.28.6",
+    "@babel/core": "7.29.0",
+    "@babel/node": "7.29.0",
+    "@babel/preset-env": "^7.29.0",
+    "@babel/preset-typescript": "7.28.5",
+    "@eslint/js": "^10.0.1",
+    "@types/cookie-parser": "1.4.10",
+    "@types/dotenv": "6.1.1",
+    "@types/express": "5.0.6",
+    "@types/express-fileupload": "1.5.1",
+    "@types/jsonwebtoken": "9.0.10",
+    "@types/minio": "7.1.0",
+    "@types/morgan": "1.9.10",
+    "@types/mysql2": "github:types/mysql2",
+    "@types/node": "^25.3.5",
+    "@types/socket.io": "3.0.1",
+    "rimraf": "6.1.3",
+    "typescript": "5.9.3"
+  }
+}
