@@ -1,6 +1,8 @@
-console.log('oh yeah!!!')
-const run: boolean = true
+import '@babel/polyfill'
+import { createConnection } from './database'
+import app from './app'
 
-if (run) {
-console.log("corriendo serve!!!");
-}
+createConnection()
+app.listen(app.get('port'), () => {
+  console.log('Server on port', app.get('port'))
+})
