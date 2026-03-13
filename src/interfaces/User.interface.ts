@@ -19,3 +19,16 @@ export interface User {
     imageMedium?: string | null,
     imageSmall?: string | null
 }
+
+export interface LoginUser {
+    email: string,
+    password: string
+    remember: boolean
+}
+
+export interface RefreshToken {
+    userId: string,
+    remember: boolean,
+    iat: number,
+    exp: number
+}

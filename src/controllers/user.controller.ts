@@ -1,17 +1,64 @@
 import { Request, Response } from 'express'
-import { User, ProfileImage } from '../interfaces/User.interface'
-import { registerSchema } from '../zod/user.schema'
+import { User, ProfileImage, LoginUser, RefreshToken } from '../interfaces/User.interface'
+import { loginSchema, registerSchema } from '../zod/user.schema'
 import { getConnection } from '../database'
 import bcrypt from 'bcrypt'
 import path from 'path'
 import { Jimp } from 'jimp'
-import jwt from 'jsonwebtoken'
 import { uploadFile } from '../utils/minio'
+import { responseTokens, responseAccessToken } from '../utils/responseTokens'
+import jwt from 'jsonwebtoken'
 import { config } from '../utils/config'
-import parseExpiressIn from '../utils/parseExpiressIn'
 
-export const login = (req: Request, res: Response): Response | void => {
-  res.json({ message: 'Login endpoint' })
+export const login = async (req: Request, res: Response): Promise<Response | void> => {
+  const user: LoginUser = req.body
+
+  try {
+    // Validamos los campos
+    const validateInputs = await loginSchema.safeParseAsync(user)
+
+    if (validateInputs.error) {
+      return res.status(400).json({
+        error: true,
+        message: 'Error en el envio de datos',
+        details: JSON.parse(validateInputs.error.message)
+      })
+    }
+
+    // Verificamos la conexion a la BD
+    const conn = getConnection()
+
+    if (!conn) throw new Error('Error al conectarse a la BD')
+    
+    // Validamos que el usuario exista
+    const [ userResult ] = await conn.query('SELECT BIN_TO_UUID(id) as id, email, password FROM users WHERE email = ?', [user.email])
+
+    if ((userResult as User[]).length != 1 || (userResult as User[])[0]?.email !== user.email) {
+      return res.status(400).json({
+        error: true,
+        message: 'Credenciales inválidas'
+      })
+    }
+
+    // Validamos el password
+    const validPassword = await bcrypt.compare(user.password, (userResult as User[])[0]?.password || '')
+
+    if (!validPassword) {
+      return res.status(400).json({
+        error: true,
+        message: 'Credenciales inválidas'
+      })
+    }
+
+    // Respondemos los tokens al usuario
+    responseTokens(res, (userResult as User[])[0]?.id || '', user.remember)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({
+      error: true,
+      message: 'Error al loggear al usuario'
+    })
+  }
 }
 
 export const register = async (req: Request, res: Response): Promise<Response | void> => {
@@ -29,7 +76,7 @@ export const register = async (req: Request, res: Response): Promise<Response | 
       })
     }
     
-    // Verificamos law conexion a la BD
+    // Verificamos la conexion a la BD
     const conn = getConnection()
 
     if (!conn) throw new Error('Error al conectarse a la BD')
@@ -99,32 +146,51 @@ export const register = async (req: Request, res: Response): Promise<Response | 
     await conn.query(`INSERT INTO users (id, fullname, email, password,	imageBig, imageMedium, imageSmall)
                       VALUES (UUID_TO_BIN(?), ?, ?, ?, ?, ?, ?)`, [newUser.id, newUser.fullname, newUser.email, newUser.password, newUser.imageBig, newUser.imageMedium, newUser.imageSmall])
     
-    // Generamos los tokens de authenticacion
-    const accessToken = jwt.sign({ userId: newUser.id || '' }, config.jwt.accessTokenSecret as string, { 
-      expiresIn: config.jwt.accessTokenExpiration 
-    } as any)
-
-    const refreshToken = jwt.sign({ userId: newUser.id || '' }, config.jwt.refreshTokenSecret as string, { 
-      expiresIn: config.jwt.refreshTokenExpiration 
-    } as any)
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: config.express.secure,
-      sameSite: config.express.sameSite
-    }).json({
-      error: false,
-      data: {
-        accessToken,
-        expiressInAccessToken: parseExpiressIn(config.jwt.accessTokenExpiration),
-        expiressInRefreshToken: parseExpiressIn(config.jwt.refreshTokenExpiration)
-      }
-    })
+    // Respondemos los tokens al usuario
+    responseTokens(res, newUser.id || '', true)
   } catch (err) {
     console.error(err)
     res.status(500).json({
       error: true,
       message: 'Error al registrar el usuario'
+    })
+  }
+}
+
+export const refresh = async (req: Request, res: Response): Promise<Response | void> => {
+  const token: string = req.cookies.refreshToken
+
+  if (!token) {
+    return res.status(401).json({
+      error: true,
+      message: 'Acceso denegado'
+    })
+  }
+
+  try {
+    const data = jwt.verify(token, config.jwt.refreshTokenSecret) as RefreshToken
+
+    // Verificamos la conexion a la BD
+    const conn = getConnection()
+
+    if (!conn) throw new Error('Error al conectarse a la BD')
+
+    // Validamos que el usuario exista
+    const [ userResult ] = await conn.query('SELECT COUNT(*) AS count FROM `users` WHERE `id` = UUID_TO_BIN(?);', [data.userId])
+
+    if ((userResult as any[])[0].count != 1) throw new Error('Usuario no encontrado')
+    
+    // Generamos los tokens
+    if (data.remember) {
+      responseTokens(res, data.userId, true)
+    } else {
+      responseAccessToken(res, data.userId)
+    }
+  } catch (err) {
+    console.error(err)
+    res.status(401).json({
+      error: true,
+      message: 'Acceso denegado'
     })
   }
 }

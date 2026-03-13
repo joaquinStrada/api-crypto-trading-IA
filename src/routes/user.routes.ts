@@ -1,7 +1,7 @@
 import { Router, urlencoded } from 'express'
 import fileUpload from 'express-fileupload'
 import { config } from '../utils/config'
-import { login, register } from '../controllers/user.controller'
+import { login, refresh, register } from '../controllers/user.controller'
 import validateProfile from '../middelwares/validateProfile.middelware'
 import cookieParser from 'cookie-parser'
 
@@ -16,5 +16,7 @@ router.post('/register',
     fileUpload(),
     (req, res, next) => validateProfile(config.imageProfiles, req, res, next),
     register)
+
+router.get('/refresh', refresh)
 
 export default router

@@ -18,3 +18,20 @@ export const registerSchema = z.object({
     .min(8, 'La contraseña debe tener al menos 8 caracteres')
     .max(20, 'La contraseña no puede tener más de 20 caracteres')
 })
+
+export const loginSchema = z.object({
+    email: z.string({
+        error: iss => iss.input === undefined ? 'El email es requerido' : 'El email debe ser una cadena de texto'
+    })
+    .min(6, 'El email debe tener al menos 6 caracteres')
+    .max(255, 'El email no puede tener más de 255 caracteres')
+    .email('El email no es válido'),
+    password: z.string({
+        error: iss => iss.input === undefined ? 'La contraseña es requerida' : 'La contraseña debe ser una cadena de texto'
+    })
+    .min(8, 'La contraseña debe tener al menos 8 caracteres')
+    .max(20, 'La contraseña no puede tener más de 20 caracteres'),
+    remember: z.boolean({
+        error: iss => iss.input === undefined ? 'El campo recuerdame es requerido' : 'El campo recuerdame debe ser un booleano'
+    })
+})
