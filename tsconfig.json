@@ -41,5 +41,9 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "src/**/*",
+    "src/interfaces/globals/*.d.ts"
+  ]
 }

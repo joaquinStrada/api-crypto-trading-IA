@@ -5,10 +5,11 @@ import { getConnection } from '../database'
 import bcrypt from 'bcrypt'
 import path from 'path'
 import { Jimp } from 'jimp'
-import { uploadFile } from '../utils/minio'
+import { uploadFile, getFile } from '../utils/minio'
 import { responseTokens, responseAccessToken } from '../utils/responseTokens'
 import jwt from 'jsonwebtoken'
 import { config } from '../utils/config'
+import mime from 'mime-types'
 
 export const login = async (req: Request, res: Response): Promise<Response | void> => {
   const user: LoginUser = req.body
@@ -193,4 +194,56 @@ export const refresh = async (req: Request, res: Response): Promise<Response | v
       message: 'Acceso denegado'
     })
   }
+}
+
+export const getUser = (req: Request, res: Response): void => {
+  res.json({
+    error: false,
+    data: req.user
+  })
+}
+
+export const getProfileImage = async (req: Request, res: Response): Promise<Response | void> => {
+  const imageName = String(req.params.imageName) 
+  const { imageBig, imageMedium, imageSmall } = req.user || {
+    imageBig: '', 
+    imageMedium: '',
+    imageSmall: ''
+  }
+
+  if (imageName !== imageBig && imageName !== imageMedium && imageName !== imageSmall) {
+    return res.status(404).json({
+      error: true,
+      message: 'La imagen no existe'
+    })
+  }
+
+  try {
+    const result = await getFile(`Profiles/${imageName}`)
+
+    // Seteamos los headers
+    const ext = path.extname(imageName)
+
+    res.header('Content-Type', String(mime.lookup(ext)))
+    res.header('accept-ranges', 'bytes')
+
+    // Respondemos la imagen
+    if (result.Body) (result.Body as NodeJS.ReadableStream).pipe(res)
+    else throw new Error('No se pudo leer el archivo')
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({
+      error: true,
+      message: 'Error al recuperar la imagen'
+    })
+  }
+}
+
+export const editUser = (req: Request, res: Response): void => {
+  res.json({message: 'Edit user endpoint'})
+}
+
+export const logout = (req: Request, res: Response): void => {
+  res.clearCookie('refreshToken')
+  res.sendStatus(204)
 }

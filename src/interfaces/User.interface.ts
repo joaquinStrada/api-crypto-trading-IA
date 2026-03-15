@@ -32,3 +32,9 @@ export interface RefreshToken {
     iat: number,
     exp: number
 }
+
+export interface AccessToken {
+    userId: string,
+    iat: number,
+    exp: number
+}

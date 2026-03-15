@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand, PutObjectCommand, ServiceOutputTypes } from '@aws-sdk/client-s3'
+import { S3Client, GetObjectCommand, PutObjectCommand, ServiceOutputTypes, GetObjectCommandOutput } from '@aws-sdk/client-s3'
 import fs from 'fs'
 import { config } from './config'
 
@@ -39,4 +39,13 @@ export const uploadFile = async (pathFile: string, keyFile: string, deleteFileLo
                 }
             })
     })
+}
+
+export const getFile = async (keyFile: string): Promise<GetObjectCommandOutput> => {
+    const command = new GetObjectCommand({
+        Bucket: config.minio.bucketName,
+        Key: keyFile
+    })
+
+    return await Client.send(command)
 }
