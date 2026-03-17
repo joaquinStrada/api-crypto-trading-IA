@@ -1,15 +1,16 @@
 import { Request, Response } from 'express'
 import { User, ProfileImage, LoginUser, RefreshToken } from '../interfaces/User.interface'
-import { loginSchema, registerSchema } from '../zod/user.schema'
+import { loginSchema, registerSchema, editSchema } from '../zod/user.schema'
 import { getConnection } from '../database'
 import bcrypt from 'bcrypt'
 import path from 'path'
 import { Jimp } from 'jimp'
-import { uploadFile, getFile } from '../utils/minio'
+import { uploadFile, getFile, deleteFile } from '../utils/minio'
 import { responseTokens, responseAccessToken } from '../utils/responseTokens'
 import jwt from 'jsonwebtoken'
 import { config } from '../utils/config'
 import mime from 'mime-types'
+import { pipeline } from 'stream/promises'
 
 export const login = async (req: Request, res: Response): Promise<Response | void> => {
   const user: LoginUser = req.body
@@ -110,9 +111,9 @@ export const register = async (req: Request, res: Response): Promise<Response | 
       newUser.imageSmall = 'small_' + newName
 
       // Paths
-      const pathBig: string = path.resolve(newUser.imageBig)
-      const pathMedium: string = path.resolve(newUser.imageMedium)
-      const pathSmall: string = path.resolve(newUser.imageSmall)
+      const pathBig = path.resolve(newUser.imageBig) as `${string}.${string}`
+      const pathMedium = path.resolve(newUser.imageMedium) as `${string}.${string}`
+      const pathSmall = path.resolve(newUser.imageSmall) as `${string}.${string}`
 
       // Cargamos la imagen con Jimp
       const Image = await Jimp.read(image?.data || Buffer.alloc(0))
@@ -121,17 +122,17 @@ export const register = async (req: Request, res: Response): Promise<Response | 
       await Image.clone().resize({
         w: 300,
         h: 300
-      }).write(pathBig as `${string}.${string}`)
+      }).write(pathBig)
 
       await Image.clone().resize({
         w: 50,
         h: 50
-      }).write(pathMedium as `${string}.${string}`)
+      }).write(pathMedium)
 
       await Image.clone().resize({
         w: 20,
         h: 20
-      }).write(pathSmall as `${string}.${string}`)
+      }).write(pathSmall)
       
       // Subir los archivos a Minio
       await uploadFile(pathBig, `Profiles/${newUser.imageBig}`)
@@ -225,10 +226,9 @@ export const getProfileImage = async (req: Request, res: Response): Promise<Resp
     const ext = path.extname(imageName)
 
     res.header('Content-Type', String(mime.lookup(ext)))
-    res.header('accept-ranges', 'bytes')
 
     // Respondemos la imagen
-    if (result.Body) (result.Body as NodeJS.ReadableStream).pipe(res)
+    if (result.Body) await pipeline(result.Body as NodeJS.ReadableStream, res)
     else throw new Error('No se pudo leer el archivo')
   } catch (err) {
     console.error(err)
@@ -239,8 +239,117 @@ export const getProfileImage = async (req: Request, res: Response): Promise<Resp
   }
 }
 
-export const editUser = (req: Request, res: Response): void => {
-  res.json({message: 'Edit user endpoint'})
+export const editUser = async (req: Request, res: Response): Promise<Response | void> => {
+  const editUser: User = req.body
+  const userId = req.user?.id
+
+  try {
+    // Validamos los campos
+    const validateInputs = await editSchema.safeParseAsync(editUser)
+    
+    if (validateInputs.error) {
+      return res.status(400).json({
+        error: true,
+        message: 'Error en el envio de datos',
+        details: JSON.parse(validateInputs.error.message)
+      })
+    }
+
+    // Verificamos la conexion a la BD
+    const conn = getConnection()
+
+    if (!conn) throw new Error('Error al conectarse a la BD')
+
+    // Validamos que el email no exista
+    const [ isEmailExist ] = await conn.query('SELECT BIN_TO_UUID(id) as id FROM users WHERE email = ?', [editUser.email])
+
+    if ((isEmailExist as User[]).length > 1 || ((isEmailExist as User[]).length == 1 && (isEmailExist as User[])[0]?.id !== userId)) {
+      return res.status(422).json({
+        error: true,
+        message: 'El email ya está registrado'
+      })
+    }
+
+    // Encriptamos la contraseña
+    if (editUser.password) editUser.password = await bcrypt.hash(editUser.password, 10)
+    
+    // Subir la imagen de perfil
+    if (req.files?.image) {
+      const { image } = req.files as ProfileImage
+
+      const newName = path.format({
+        name: userId,
+        ext: path.extname(image?.name || '') || '.jpg'
+      })
+
+      editUser.imageBig = 'big_' + newName
+      editUser.imageMedium = 'medium_' + newName
+      editUser.imageSmall = 'small_' + newName
+
+      // Crear los paths
+      const pathBig = path.resolve(editUser.imageBig) as `${string}.${string}`
+      const pathMedium = path.resolve(editUser.imageMedium) as `${string}.${string}`
+      const pathSmall = path.resolve(editUser.imageSmall) as `${string}.${string}`
+
+      // Cargamos la imagen con Jimp
+      const Image = await Jimp.read(image?.data || Buffer.alloc(0))
+      
+      // Redimensionamos y guardamos las imágenes
+      await Image.clone().resize({
+        w: 300,
+        h: 300
+      }).write(pathBig)
+
+      await Image.clone().resize({
+        w: 50,
+        h: 50
+      }).write(pathMedium)
+
+      await Image.clone().resize({
+        w: 20,
+        h: 20
+      }).write(pathSmall)
+
+      // Eliminamos los archivos de minio
+      const { imageBig, imageMedium, imageSmall } = req.user || {
+        imageBig: null, 
+        imageMedium: null,
+        imageSmall: null
+      }
+
+      if (imageBig && imageMedium && imageSmall) {
+        await deleteFile(`Profiles/${imageBig}`)
+        await deleteFile(`Profiles/${imageMedium}`)
+        await deleteFile(`Profiles/${imageSmall}`)
+      }
+
+      // Subir los archivos a Minio
+      await uploadFile(pathBig, `Profiles/${editUser.imageBig}`)
+      await uploadFile(pathMedium, `Profiles/${editUser.imageMedium}`)
+      await uploadFile(pathSmall, `Profiles/${editUser.imageSmall}`)
+    } else {
+      delete editUser.imageBig
+      delete editUser.imageMedium
+      delete editUser.imageSmall
+    }
+
+    // Editamos el usuario
+    await conn.query('UPDATE users SET ? WHERE id = UUID_TO_BIN(?)', [editUser, userId])
+
+    // Responder al cliente
+    const [ user ] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, fullname, email, imageBig, imageMedium, imageSmall FROM users WHERE id = UUID_TO_BIN(?)', [userId])
+
+    res.json({
+      error: false,
+      data: (user as User[])[0] || null
+    })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({
+      error: true,
+      message: 'Error al editar el usuario'
+    })
+  }
 }
 
 export const logout = (req: Request, res: Response): void => {

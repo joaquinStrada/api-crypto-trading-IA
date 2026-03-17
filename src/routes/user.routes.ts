@@ -22,9 +22,14 @@ router.get('/refresh', refresh)
 
 router.get('/', validateToken, getUser)
 
-router.get('/image/:imageName', validateToken, getProfileImage)
+router.get('/image/:imageName',validateToken, getProfileImage)
 
-router.put('/', validateToken, editUser)
+router.put('/',
+    validateToken,
+    urlencoded({ extended: false}),
+    fileUpload(),
+    (req, res, next) => validateProfile(config.imageProfiles, req, res, next),
+    editUser)
 
 router.get('/logout', logout)
 
