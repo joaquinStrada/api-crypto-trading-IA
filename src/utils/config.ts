@@ -3,6 +3,7 @@ dotenv()
 
 export const config = {
     express: {
+        host: process.env.HOST || `http://localhost:${process.env.PORT || 3000}`,
         port: process.env.PORT || 3000,
         secure: Boolean(process.env.SECURE) || false,
         sameSite: (process.env.SAME_SITE as 'lax' | 'strict' | 'none' | undefined) || 'lax'

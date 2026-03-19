@@ -58,7 +58,7 @@ export const login = async (req: Request, res: Response): Promise<Response | voi
     console.error(err)
     res.status(500).json({
       error: true,
-      message: 'Error al loggear al usuario'
+      message: 'Error al authenticar al usuario'
     })
   }
 }
