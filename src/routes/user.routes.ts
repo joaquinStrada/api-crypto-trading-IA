@@ -46,6 +46,115 @@ import cookieParser from 'cookie-parser'
  *               description: el tiempo de expiracion del token de actualizacion
  *               required: false
  *               example: 2592000000
+ *     UserInputs:
+ *       type: object
+ *       summary: Los campos para poder gestionar al usuario
+ *       properties:
+ *         fullname:
+ *           type: string
+ *           description: El nombre completo del usuario
+ *           required: true
+ *           example: Joaquin Strada
+ *         email:
+ *           type: string
+ *           description: El email del usuario
+ *           required: true
+ *           example: joaquinstrada@hotmail.com.ar
+ *         password:
+ *           type: string
+ *           description: El password del usuario
+ *           required: true
+ *           example: ""
+ *         image:
+ *           type: file
+ *           description: La imagen de perfil del usuario
+ *           required: false
+ *     ErrorInputs:
+ *       type: object
+ *       summary: Error en el envio de datos
+ *       properties:
+ *         error:
+ *           type: boolean
+ *           description: Si la api devuelve un error o no
+ *           required: true
+ *           example: true
+ *         message:
+ *           type: string
+ *           description: El mensaje que devuelve la api
+ *           required: true
+ *           example: Error en el envio de datos
+ *         details:
+ *           type: array
+ *           description: Los detalles del error
+ *           required: true
+ *           items:
+ *             $ref: '#/components/schemas/ErrorDetail'
+ *     ErrorDetail:
+ *       type: object
+ *       summary: Detalles del error en el envio de datos
+ *       properties:
+ *         origin:
+ *           type: string
+ *           description: El tipo de campo que genero el error
+ *           required: true
+ *           example: string
+ *         code:
+ *           type: string
+ *           description: El codigo de error
+ *           required: true
+ *           example: too_small
+ *         minimum:
+ *           type: integer
+ *           description: la minima longitud del campo
+ *           required: true
+ *           example: 6
+ *         inclusive:
+ *          type: boolean
+ *          description: Si el campo es requerido o no
+ *          required: true
+ *          example: true
+ *         path:
+ *           type: array
+ *           description: El path del campo
+ *           required: true
+ *           items:
+ *             type: string
+ *             description: El nombre del campo
+ *             required: true
+ *             example: fullname
+ *         message:
+ *           type: string
+ *           description: El mensaje de error del campo
+ *           required: true
+ *           example: El nombre completo debe tener al menos 6 caracteres
+ *     EmailExist:
+ *       type: object
+ *       summary: El email ya esta registrado
+ *       properties:
+ *         error:
+ *           type: boolean
+ *           description: Si la api devuelve un error o no
+ *           required: true
+ *           example: true
+ *         message:
+ *           type: string
+ *           description: El mensaje que devuelve la api
+ *           required: true
+ *           example: El email ya está registrado
+ *     AccessDenied:
+ *       type: object
+ *       summary: Acceso denegado
+ *       properties:
+ *         error:
+ *           type: boolean
+ *           description: Si la api devuelve un error o no
+ *           required: true
+ *           example: true
+ *         message:
+ *           type: string
+ *           description: El mensaje que devuelve la api
+ *           required: true
+ *           example: Acceso denegado
  */
 
 const router = Router()
@@ -127,12 +236,81 @@ router.use(cookieParser())
  */
 router.post('/login', login)
 
+/**
+ * @swagger
+ * /api/v1/user/register:
+ *   post:
+ *     summary: Registrar un nuevo usuario
+ *     tags: [User]
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/UserInputs'
+ *     responses:
+ *       200:
+ *         description: Usuario authenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ResponseToken'
+ *       400:
+ *         description: Error en el envio de datos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorInputs'
+ *       422:
+ *         description: El email ya está registrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmailExist'
+ *       500:
+ *         description: Error del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               summary: error del servidor al registrar el usuario
+ *               properties:
+ *                 error:
+ *                   type: boolean
+ *                   description: Si la api devuelve un error o no
+ *                   required: true
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   description: El mensaje que devuelve la api
+ *                   required: true
+ *                   example: Error al registrar el usuario
+ */
 router.post('/register', 
     urlencoded({ extended: false }),
     fileUpload(),
     (req, res, next) => validateProfile(config.imageProfiles, req, res, next),
     register)
 
+/**
+ * @swagger
+ * /api/v1/users/refresh:
+ *   get:
+ *    summary: Actualizar los tokens
+ *    tags: [User]
+ *    responses:
+ *      200:
+ *       description: Tokens actualizados
+ *       content:
+ *         application/json:
+ *           schema:
+ *               $ref: '#/components/schemas/ResponseToken'
+ *      401:
+ *        description: Acceso denegado
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/AccessDenied'
+ */
 router.get('/refresh', refresh)
 
 router.get('/', validateToken, getUser)
