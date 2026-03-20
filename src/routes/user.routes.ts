@@ -155,6 +155,64 @@ import cookieParser from 'cookie-parser'
  *           description: El mensaje que devuelve la api
  *           required: true
  *           example: Acceso denegado
+ *     User:
+ *       type: object
+ *       summary: La respuesta con la informacion del usuario
+ *       properties:
+ *         error:
+ *           type: boolean
+ *           description: Si la api devuelve un error o no
+ *           required: true
+ *           example: true
+ *         data:
+ *           type: object
+ *           summary: La informacion del usuario
+ *           required: true
+ *           properties:
+ *             id:
+ *               type: string
+ *               description: El id del usuario
+ *               required: true
+ *               example: 7c165e95-1dc8-11f1-9a25-080027cd356a
+ *             createdAt:
+ *               type: string
+ *               description: Fecha y hora de creacion del usuario
+ *               required: true
+ *               example: 2026-03-12T04:04:04.000Z
+ *             fullname:
+ *               type: string
+ *               description: El nombre completo del usuario
+ *               required: true
+ *               example: Joaquin Strada
+ *             email:
+ *               type: string
+ *               description: El email del usuario
+ *               required: true
+ *               example: joaquinstrada@hotmail.com.ar
+ *             imageBig:
+ *               type: string
+ *               description: El nopmbre de la imagen grande del usuario
+ *               required: true
+ *               example: big_7c165e95-1dc8-11f1-9a25-080027cd356a.png
+ *             imageMedium:
+ *               type: string
+ *               description: El nopmbre de la imagen mediana del usuario
+ *               required: true
+ *               example: medium_7c165e95-1dc8-11f1-9a25-080027cd356a.png
+ *             imageSmall:
+ *               type: string
+ *               description: El nopmbre de la imagen pequeña del usuario
+ *               required: true
+ *               example: small_7c165e95-1dc8-11f1-9a25-080027cd356a.png
+ *   parameters:
+ *     Authorization:
+ *      in: header
+ *      name: Authorization
+ *      description: El header Authorization debe contener el token de acceso en el formato Bearer {token}
+ *      required: true
+ *      schema:
+ *        type: string
+ *        example: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI3YzE2NWU5NS0xZGM4LTExZjEtOWEyNS0wODAwMjdjZDM1NmEiLCJpYXQiOjE3NzM2ODAyODUsImV4cCI6MTc3MzY4MTE4NX0.D37Sa7hQrY26ctdsN9_biuGASAox0M1KZTX9TGWSwVc
  */
 
 const router = Router()
@@ -313,10 +371,186 @@ router.post('/register',
  */
 router.get('/refresh', refresh)
 
+/**
+ * @swagger
+ * /api/v1/users:
+ *   get:
+ *    summary: Obtener al usuario authenticado 
+ *    tags: [User]
+ *    parameters:
+ *      - $ref: '#/components/parameters/Authorization'
+ *    responses:
+ *      200:
+ *        description: Informacion del usuario
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/User'
+ *      401:
+ *        description: Acceso denegado
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/AccessDenied' 
+ */
 router.get('/', validateToken, getUser)
 
+/**
+ * @swagger
+ * /api/v1/users/image/{imageName}:
+ *   get:
+ *     summary: La foto de perfil del usuario
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: imageName
+ *         description: El nombre de la foto de perfil
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: big_7c165e95-1dc8-11f1-9a25-080027cd356a.png
+ *       - $ref: '#/components/parameters/Authorization'
+ *     responses:
+ *       200:
+ *         description: La foto de perfil
+ *         content:
+ *           image/jpg:
+ *             schema:
+ *               type: binary
+ *               description: Foto de perfil
+ *               required: true
+ *           image/jpeg:
+ *             schema:
+ *               type: binary
+ *               description: Foto de perfil
+ *               required: true
+ *           image/png:
+ *             schema:
+ *               type: binary
+ *               description: Foto de perfil
+ *               required: true
+ *           image/gif:
+ *             schema:
+ *               type: binary
+ *               description: Foto de perfil
+ *               required: true
+ *           image/bmp:
+ *             schema:
+ *               type: binary
+ *               description: Foto de perfil
+ *               required: true
+ *           image/webp:
+ *             schema:
+ *               type: binary
+ *               description: Foto de perfil
+ *               required: true
+ *           image/svg+xml:
+ *             schema:
+ *               type: binary
+ *               description: Foto de perfil
+ *               required: true
+ *       401:
+ *         description: Acceso denegado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccessDenied'
+ *       404:
+ *         description: Imagen no encontrada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               summary: Imagen no encontrada
+ *               properties:
+ *                 error:
+ *                   type: boolean
+ *                   description: Si la api devuelve un error o no
+ *                   required: true
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   description: El mensaje que devuelve la api
+ *                   required: true
+ *                   example: La imagen no existe
+ *       500:
+ *         description: Error del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               summary: error del servidor al recuperar la imagen
+ *               properties:
+ *                 error:
+ *                   type: boolean
+ *                   description: Si la api devuelve un error o no
+ *                   required: true
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   description: El mensaje que devuelve la api
+ *                   required: true
+ *                   example: Error al recuperar la imagen
+ */
 router.get('/image/:imageName',validateToken, getProfileImage)
 
+/**
+ * @swagger
+ * /api/v1/users:
+ *   put:
+ *     summary: Editar usuario
+ *     tags: [User]
+ *     parameters:
+ *       - $ref: '#/components/parameters/Authorization'
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/UserInputs'
+ *     responses:
+ *       200:
+ *        description: Informacion del usuario actualizado
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Error en el envio de datos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorInputs'
+ *       401:
+ *         description: Acceso denegado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccessDenied'
+ *       422:
+ *         description: El email ya está registrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EmailExist'
+ *       500:
+ *         description: Error del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               summary: error del servidor al editar el usuario
+ *               properties:
+ *                 error:
+ *                   type: boolean
+ *                   description: Si la api devuelve un error o no
+ *                   required: true
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   description: El mensaje que devuelve la api
+ *                   required: true
+ *                   example: Error al editar el usuario
+ */
 router.put('/',
     validateToken,
     urlencoded({ extended: false}),
@@ -324,6 +558,16 @@ router.put('/',
     (req, res, next) => validateProfile(config.imageProfiles, req, res, next),
     editUser)
 
+/**
+ * @swagger
+ * /api/v1/users/logout:
+ *   get:
+ *     summary: Cerrar session
+ *     tags: [User]
+ *     responses:
+ *       204:
+ *         description: Cerrada la session del usuario
+ */
 router.get('/logout', logout)
 
 export default router
