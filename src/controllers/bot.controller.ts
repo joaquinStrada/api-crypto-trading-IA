@@ -1,0 +1,152 @@
+import { Request, Response } from 'express'
+import { Bot } from '../interfaces/Bot.interface'
+import botSchema from '../zod/bot.schema'
+import { getConnection } from '../database'
+import { config } from '../utils/config'
+import fs from 'fs/promises'
+import path from 'path'
+import { uploadFile } from '../utils/minio'
+
+export const getBots = async (req: Request, res: Response): Promise<void> => {
+    const userId = String(req.user?.id)
+
+    try {
+        // Validamos la conexion
+        const conn = getConnection()
+
+        if (!conn) throw new Error('Error al conectarse a la BD')
+
+        // Recuperamos los bots
+        const [ Bots ] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model FROM bots WHERE userId = UUID_TO_BIN(?)', [userId])
+
+        res.json({
+            error: false,
+            count: (Bots as Bot[]).length,
+            data: Bots as Bot[]
+        })
+    } catch (err) {
+        console.error(err)
+        res.status(500).json({
+            error: true,
+            message: 'Ha ocurrido un error al recuperar los bots'
+        })
+    }
+}
+
+export const getBot = async (req: Request, res: Response): Promise<Response | void> => {
+    const botId = String(req.params.id)
+    const userId = String(req.user?.id)
+
+    try {
+        // Validamos la conexion a la BD
+        const conn = getConnection()
+
+        if (!conn) throw new Error('Error al conectarse a la BD')
+
+        // Recuperamos el bot
+        const [ Bot ] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model, BIN_TO_UUID(userId) as userId FROM bots WHERE id = UUID_TO_BIN(?)', [botId])
+
+        if ((Bot as Bot[]).length !== 1 || (Bot as Bot[])[0]?.userId !== userId) {
+            return res.status(404).json({
+                error: true,
+                message: 'Bot no encontrado'
+            })
+        }
+
+        // Respondemos al usuario
+        const data = (Bot as Bot[])[0]
+
+        delete data?.userId
+        res.json({
+            error: false,
+            data
+        })
+    } catch (err) {
+        if ((err as any).code == 'ER_WRONG_VALUE_FOR_TYPE') {
+            res.status(404).json({
+                error: true,
+                message: 'Bot no encontrado'
+            })
+        } else {
+            console.error(err)
+            res.status(500).json({
+                error: true,
+                message: 'Ha ocurrido un error al recuperar el bot'
+            })
+        }
+    }
+}
+
+export const createBot = async (req: Request, res: Response): Promise<Response | void> => {
+    const newBot: Bot = req.body
+    const userId = String(req.user?.id)
+
+    try {
+        // Validamos los campos
+        const validateInputs = await botSchema.safeParseAsync(newBot)
+
+        if (validateInputs.error) {
+            return res.status(400).json({
+                error: true,
+                message: 'Error en el envio de datos',
+                datails: JSON.parse(validateInputs.error.message)
+            })
+        }
+
+        // Validamos la conexion a la BD
+        const conn = getConnection()
+
+        if (!conn) throw new Error('Error al conectarse a la BD')
+
+        // Validamos que el usuario no tenga un bot con el mismo nombre
+        const [ BotExist ] = await conn.query('SELECT COUNT(*) as count FROM bots WHERE LOWER(name) = LOWER(?) AND userId = UUID_TO_BIN(?)', [newBot.name, userId])
+
+        if ((BotExist as any[])[0].count > 0) {
+            return res.status(422).json({
+                error: true,
+                message: 'Ya tienes un bot registrado con el mismo nombre'
+            })
+        }
+
+        // Generar un UUID
+        const [ UUIDResult ] = await conn.query('SELECT UUID() uuid')
+        newBot.id = (UUIDResult as any[])[0].uuid
+
+        // Registramos el bot en la BD
+        await conn.query(`INSERT INTO bots (id, name, description, model, userId)
+            VALUES (UUID_TO_BIN(?), ?, ?, ?, UUID_TO_BIN(?))`,
+            [newBot.id, newBot.name, newBot.description, newBot.model, userId])
+
+        // Subir los archivos a minio
+        const dir = await fs.opendir(config.bots.pathRootData)
+
+        for await (const dirent of dir) {
+            if (dirent.isFile()) {
+                await uploadFile(path.join(config.bots.pathRootData, dirent.name),
+                    `${newBot.id}/${dirent.name}`, false)
+            }
+        }
+
+        // Responder al usuario
+        const [ BotDb ] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model FROM bots WHERE id = UUID_TO_BIN(?)', [newBot.id])
+
+        res.json({
+            error: false,
+            data: (BotDb as Bot[])[0]
+        })
+    } catch (err) {
+        console.error(err)
+        res.status(500).json({
+            error: true,
+            message: 'Ha occurrido un error al crear el bot'
+        })
+    }
+}
+
+export const updateBot = async (req: Request, res: Response): Promise<Response | void> => {
+    res.json({ message: 'Update Bot Endpoint' })
+}
+
+export const deleteBot = async (req: Request, res: Response): Promise<Response | void> => {
+    res.json({ message: 'Delete Bot Endpoint' })
+}

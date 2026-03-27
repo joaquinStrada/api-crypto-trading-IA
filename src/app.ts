@@ -3,6 +3,8 @@ import morgan from 'morgan'
 import { config } from './utils/config'
 
 import userRouter from './routes/user.routes'
+import botRouter from './routes/bot.routes'
+import validateToken from './middelwares/validateToken.middelware'
 
 // Swagger
 import swaggerUI from 'swagger-ui-express'
@@ -20,6 +22,7 @@ app.use(express.json())
 
 // Routes
 app.use('/api/v1/users', userRouter)
+app.use('/api/v1/bots', validateToken, botRouter)
 
 // Config swagger
 const specs = swaggerJsDoc(options)

@@ -492,7 +492,7 @@ router.get('/', validateToken, getUser)
  *                   required: true
  *                   example: Error al recuperar la imagen
  */
-router.get('/image/:imageName',validateToken, getProfileImage)
+router.get('/image/:imageName', validateToken, getProfileImage)
 
 /**
  * @swagger

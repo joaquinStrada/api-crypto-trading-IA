@@ -97,7 +97,7 @@ export const register = async (req: Request, res: Response): Promise<Response | 
     newUser.password = await bcrypt.hash(newUser.password, 10)
 
     // Procesamos la foto de perfil
-    const [ uuidResult ] = await conn.query('SELECT UUID() uuid;')
+    const [ uuidResult ] = await conn.query('SELECT UUID() uuid')
     newUser.id = (uuidResult as any[])[0].uuid
 
     if (req.files?.image) {

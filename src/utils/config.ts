@@ -1,4 +1,5 @@
 import { config as dotenv } from 'dotenv'
+import { resolve } from 'path'
 dotenv()
 
 export const config = {
@@ -25,6 +26,9 @@ export const config = {
         accessKey: process.env.MINIO_ACCESS_KEY || '',
         secretKey: process.env.MINIO_SECRET_KEY || '',
         bucketName: process.env.MINIO_BUCKET_NAME || ''
+    },
+    bots: {
+        pathRootData: process.env.PATH_ROOT_DATA || resolve('data')
     },
     jwt: {
         accessTokenSecret: (process.env.JWT_ACCESS_TOKEN_SECRET || '') as string,
