@@ -1,4 +1,6 @@
-import { S3Client, GetObjectCommand, PutObjectCommand, ServiceOutputTypes, GetObjectCommandOutput, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, GetObjectCommand, PutObjectCommand, 
+    ServiceOutputTypes, GetObjectCommandOutput, DeleteObjectCommand, 
+    ListObjectsCommand, ListObjectsCommandOutput } from '@aws-sdk/client-s3'
 import fs from 'fs'
 import { config } from './config'
 
@@ -54,6 +56,15 @@ export const deleteFile = async (keyFile: string): Promise<ServiceOutputTypes> =
     const command = new DeleteObjectCommand({
         Bucket: config.minio.bucketName,
         Key: keyFile
+    })
+
+    return await Client.send(command)
+}
+
+export const getFiles = async (prefix: string): Promise<ListObjectsCommandOutput> => {
+    const command = new ListObjectsCommand({
+        Bucket: config.minio.bucketName,
+        Prefix: prefix
     })
 
     return await Client.send(command)

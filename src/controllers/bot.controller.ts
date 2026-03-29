@@ -5,7 +5,7 @@ import { getConnection } from '../database'
 import { config } from '../utils/config'
 import fs from 'fs/promises'
 import path from 'path'
-import { uploadFile } from '../utils/minio'
+import { uploadFile, deleteFile, getFiles } from '../utils/minio'
 
 export const getBots = async (req: Request, res: Response): Promise<void> => {
     const userId = String(req.user?.id)
@@ -17,7 +17,7 @@ export const getBots = async (req: Request, res: Response): Promise<void> => {
         if (!conn) throw new Error('Error al conectarse a la BD')
 
         // Recuperamos los bots
-        const [ Bots ] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model FROM bots WHERE userId = UUID_TO_BIN(?)', [userId])
+        const [Bots] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model FROM bots WHERE userId = UUID_TO_BIN(?)', [userId])
 
         res.json({
             error: false,
@@ -35,7 +35,6 @@ export const getBots = async (req: Request, res: Response): Promise<void> => {
 
 export const getBot = async (req: Request, res: Response): Promise<Response | void> => {
     const botId = String(req.params.id)
-    const userId = String(req.user?.id)
 
     try {
         // Validamos la conexion a la BD
@@ -44,36 +43,18 @@ export const getBot = async (req: Request, res: Response): Promise<Response | vo
         if (!conn) throw new Error('Error al conectarse a la BD')
 
         // Recuperamos el bot
-        const [ Bot ] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model, BIN_TO_UUID(userId) as userId FROM bots WHERE id = UUID_TO_BIN(?)', [botId])
+        const [Bot] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model FROM bots WHERE id = UUID_TO_BIN(?)', [botId])
 
-        if ((Bot as Bot[]).length !== 1 || (Bot as Bot[])[0]?.userId !== userId) {
-            return res.status(404).json({
-                error: true,
-                message: 'Bot no encontrado'
-            })
-        }
-
-        // Respondemos al usuario
-        const data = (Bot as Bot[])[0]
-
-        delete data?.userId
         res.json({
             error: false,
-            data
+            data: (Bot as Bot[])[0]
         })
     } catch (err) {
-        if ((err as any).code == 'ER_WRONG_VALUE_FOR_TYPE') {
-            res.status(404).json({
-                error: true,
-                message: 'Bot no encontrado'
-            })
-        } else {
-            console.error(err)
-            res.status(500).json({
-                error: true,
-                message: 'Ha ocurrido un error al recuperar el bot'
-            })
-        }
+        console.error(err)
+        res.status(500).json({
+            error: true,
+            message: 'Ha ocurrido un error al recuperar el bot'
+        })
     }
 }
 
@@ -99,7 +80,7 @@ export const createBot = async (req: Request, res: Response): Promise<Response |
         if (!conn) throw new Error('Error al conectarse a la BD')
 
         // Validamos que el usuario no tenga un bot con el mismo nombre
-        const [ BotExist ] = await conn.query('SELECT COUNT(*) as count FROM bots WHERE LOWER(name) = LOWER(?) AND userId = UUID_TO_BIN(?)', [newBot.name, userId])
+        const [BotExist] = await conn.query('SELECT COUNT(*) as count FROM bots WHERE LOWER(name) = LOWER(?) AND userId = UUID_TO_BIN(?)', [newBot.name, userId])
 
         if ((BotExist as any[])[0].count > 0) {
             return res.status(422).json({
@@ -109,7 +90,7 @@ export const createBot = async (req: Request, res: Response): Promise<Response |
         }
 
         // Generar un UUID
-        const [ UUIDResult ] = await conn.query('SELECT UUID() uuid')
+        const [UUIDResult] = await conn.query('SELECT UUID() uuid')
         newBot.id = (UUIDResult as any[])[0].uuid
 
         // Registramos el bot en la BD
@@ -123,12 +104,12 @@ export const createBot = async (req: Request, res: Response): Promise<Response |
         for await (const dirent of dir) {
             if (dirent.isFile()) {
                 await uploadFile(path.join(config.bots.pathRootData, dirent.name),
-                    `${newBot.id}/${dirent.name}`, false)
+                    `bots/${newBot.id}/${dirent.name}`, false)
             }
         }
 
         // Responder al usuario
-        const [ BotDb ] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model FROM bots WHERE id = UUID_TO_BIN(?)', [newBot.id])
+        const [BotDb] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model FROM bots WHERE id = UUID_TO_BIN(?)', [newBot.id])
 
         res.json({
             error: false,
@@ -144,9 +125,91 @@ export const createBot = async (req: Request, res: Response): Promise<Response |
 }
 
 export const updateBot = async (req: Request, res: Response): Promise<Response | void> => {
-    res.json({ message: 'Update Bot Endpoint' })
+    const editBot: Bot = req.body || {}
+    editBot.id = String(req.params.id)
+    const userId = String(req.user?.id)
+
+    try {
+        // Validamos los campos
+        const validateInputs = await botSchema.safeParseAsync(editBot)
+
+        if (validateInputs.error) {
+            return res.status(400).json({
+                error: true,
+                message: 'Error en el envio de datos',
+                details: JSON.parse(validateInputs.error.message)
+            })
+        }
+
+        // Validamos la conexion a la BD
+        const conn = getConnection()
+
+        if (!conn) throw new Error('Error al conectarse a la BD')
+
+        // Validamos que el usuario no tenga un bot con el mismo nombre
+        const [isNameExist] = await conn.query('SELECT BIN_TO_UUID(id) as id FROM bots WHERE LOWER(name) = LOWER(?) AND userId = UUID_TO_BIN(?)', [editBot.name, userId])
+
+        if ((isNameExist as any[]).length > 1 || ((isNameExist as any[]).length == 1 && (isNameExist as any[])[0]?.id !== editBot.id)) {
+            return res.status(422).json({
+                error: true,
+                message: 'Ya tienes un bot registrado con el mismo nombre'
+            })
+        }
+
+        // Editamos el bot
+        await conn.query('UPDATE bots SET name = ?,description = ?,model = ? WHERE id = UUID_TO_BIN(?)',
+            [editBot.name, editBot.description, editBot.model, editBot.id])
+
+        // Respondemos con el bot editado
+        const [botBD] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model FROM bots WHERE id = UUID_TO_BIN(?)', [editBot.id])
+
+        res.json({
+            error: false,
+            data: (botBD as Bot[])[0]
+        })
+    } catch (err) {
+        if ((err as any).code == 'ER_WRONG_VALUE_FOR_TYPE') {
+            res.status(404).json({
+                error: true,
+                message: 'Bot no encontrado'
+            })
+        } else {
+            console.error(err)
+            res.status(500).json({
+                error: true,
+                message: 'Ha ocurrido un error al editar el bot'
+            })
+        }
+    }
 }
 
 export const deleteBot = async (req: Request, res: Response): Promise<Response | void> => {
-    res.json({ message: 'Delete Bot Endpoint' })
+    const botId = String(req.params.id)
+
+    try {
+        // Validamos la conexion a la BD
+        const conn = getConnection()
+
+        if (!conn) throw new Error('Error al conectarse a la BD')
+        
+        // Eliminamos los archivos de minio
+        const listedFiles = await getFiles(`bots/${botId}`)
+
+        if (!listedFiles.Contents || listedFiles.Contents.length == 0) throw new Error('No existe la carpeta en minio')
+        
+        for await (const Content of listedFiles.Contents) {
+            await deleteFile(Content.Key || '')
+        }
+
+        // Eliminamos el bot de la Base de datos
+        await conn.query('DELETE FROM bots WHERE id = UUID_TO_BIN(?)', [botId])
+
+        res.sendStatus(204)
+    } catch (err) {
+        console.error(err)
+        res.status(500).json({
+            error: true,
+            message: 'Ha ocurrido un error al eliminar el bot'
+        })
+    }
 }
