@@ -5,7 +5,9 @@ import { getConnection } from '../database'
 import { config } from '../utils/config'
 import fs from 'fs/promises'
 import path from 'path'
-import { uploadFile, deleteFile, getFiles } from '../utils/minio'
+import { lookup } from 'mime-types'
+import { pipeline } from 'stream/promises'
+import { uploadFile, deleteFile, getFiles, getFile as GetFile } from '../utils/minio'
 
 export const getBots = async (req: Request, res: Response): Promise<void> => {
     const userId = String(req.user?.id)
@@ -183,7 +185,7 @@ export const updateBot = async (req: Request, res: Response): Promise<Response |
     }
 }
 
-export const deleteBot = async (req: Request, res: Response): Promise<Response | void> => {
+export const deleteBot = async (req: Request, res: Response): Promise<void> => {
     const botId = String(req.params.id)
 
     try {
@@ -211,5 +213,69 @@ export const deleteBot = async (req: Request, res: Response): Promise<Response |
             error: true,
             message: 'Ha ocurrido un error al eliminar el bot'
         })
+    }
+}
+
+export const getListedFiles = async (req: Request, res: Response): Promise<void> => {
+    const botId = String(req.params.id)
+
+    try {
+        const listedFiles = await getFiles(`bots/${botId}`)
+
+        if (!listedFiles.Contents || listedFiles.Contents.length == 0) throw new Error('Error al recuperar la carpeta del bot')
+
+        const data = listedFiles.Contents.map(file => {
+            const { Key, LastModified, Size } = file
+            const name = path.basename(Key || '')
+            const ext = path.extname(name).replace('.', '') // Readme.md -> .md
+
+            return {
+                name,
+                ext,
+                lastModified: LastModified,
+                size: Size
+            }
+        })
+
+        res.json({
+            error: false,
+            data
+        })
+    } catch (err) {
+        console.error(err)
+        res.status(500).json({
+            error: true,
+            message: 'Ha ocurrido un error al recuperar los archivos'
+        })
+    }
+}
+
+export const getFile = async (req: Request, res: Response): Promise<void> => {
+    const botId = String(req.params.id)
+    const filename = String(req.params.filename)
+
+    try {
+       const file = await GetFile(`bots/${botId}/${filename}`)
+       
+       // Seteamos los headers
+       if (path.extname(filename) == '') res.header('Content-Type', 'text/x-dockerfile; charset=utf-8')
+       else res.header('Content-type', String(lookup(path.extname(filename))) + '; charset=utf-8')
+    
+       // Devolvemos el archivo
+       if (file.Body) await pipeline(file.Body as NodeJS.ReadableStream, res)
+       else throw new Error('No se pudo leer el archivo')
+    } catch (err) {
+        if ((err as any).message = 'The specified key does not exist.') {
+            res.status(400).json({
+                error: true,
+                message: 'Archivo no encontrado'
+            })
+        } else {
+            console.error(err)
+            res.status(500).json({
+                error: true,
+                message: 'Ha ocurrido un error al recuperar el archivo'
+            })
+        }
     }
 }
