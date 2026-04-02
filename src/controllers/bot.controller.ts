@@ -5,9 +5,10 @@ import { getConnection } from '../database'
 import { config } from '../utils/config'
 import fs from 'fs/promises'
 import path from 'path'
+import { UploadedFile } from 'express-fileupload'
 import { lookup } from 'mime-types'
 import { pipeline } from 'stream/promises'
-import { uploadFile, deleteFile, getFiles, getFile as GetFile } from '../utils/minio'
+import { uploadFile, deleteFile, getFiles, getFile as GetFile, isExistFile, uploadBufferFile } from '../utils/minio'
 
 export const getBots = async (req: Request, res: Response): Promise<void> => {
     const userId = String(req.user?.id)
@@ -277,5 +278,67 @@ export const getFile = async (req: Request, res: Response): Promise<void> => {
                 message: 'Ha ocurrido un error al recuperar el archivo'
             })
         }
+    }
+}
+
+export const updateFile = async (req: Request, res: Response): Promise<Response | void> => {
+    const botId = String(req.params.id)
+    const filename = String(req.params.filename)
+    const File:UploadedFile | UploadedFile[] | undefined = req.files?.file
+
+    if (!File) {
+        return res.status(400).json({
+            error: true,
+            message: 'Debe enviar un archivo'
+        })
+    } else if (Array.isArray(File)) {
+        return res.status(400).json({
+            error: true,
+            message: 'Unicamente puede enviar un archivo'
+        })
+    } else if (path.extname(filename) != path.extname(File.name || '')) {
+        return res.status(400).json({
+            error: true,
+            message: 'las extensiones no coinciden'
+        })
+    } else if (File.size > config.bots.maxFileSize) {
+        return res.status(400).json({
+            error: true,
+            message: 'El archivo es demasiado grande'
+        })
+    }    
+
+    try {
+        const keyFile = `bots/${botId}/${filename}`
+        const isFileExist = await isExistFile(keyFile)
+
+        if (!isFileExist) {
+            return res.status(400).json({
+                error: true,
+                message: 'No se ha encontrado el archivo'
+            })
+        }
+
+        // Eliminar el archivo
+        await deleteFile(keyFile)
+
+        // Subir el nuevo archivo
+        await uploadBufferFile(keyFile, File.data)
+
+        res.json({
+            error: false,
+            data: {
+                name: filename,
+                ext: path.extname(filename).replace('.', ''),
+                lastModified: new Date(),
+                size: File.size
+            }
+        })
+    } catch (err) {
+        console.error(err)
+        res.status(500).json({
+            error: true,
+            message: 'Ha ocurrido un error al editar un archivo'
+        })
     }
 }

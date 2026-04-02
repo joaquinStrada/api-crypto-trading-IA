@@ -28,7 +28,8 @@ export const config = {
         bucketName: process.env.MINIO_BUCKET_NAME || ''
     },
     bots: {
-        pathRootData: process.env.PATH_ROOT_DATA || resolve('data')
+        pathRootData: process.env.PATH_ROOT_DATA || resolve('data'),
+        maxFileSize: Number(process.env.MAX_FILE_BOT_SIZE) || 5 * 1024 * 1024 // 5MB
     },
     jwt: {
         accessTokenSecret: (process.env.JWT_ACCESS_TOKEN_SECRET || '') as string,

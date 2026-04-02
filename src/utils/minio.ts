@@ -1,6 +1,7 @@
-import { S3Client, GetObjectCommand, PutObjectCommand, 
-    ServiceOutputTypes, GetObjectCommandOutput, DeleteObjectCommand, 
-    ListObjectsCommand, ListObjectsCommandOutput } from '@aws-sdk/client-s3'
+import { S3Client, GetObjectCommand, PutObjectCommand,  GetObjectCommandOutput, DeleteObjectCommand, 
+    ListObjectsCommand, ListObjectsCommandOutput, 
+    PutObjectCommandOutput,
+    DeleteObjectCommandOutput} from '@aws-sdk/client-s3'
 import fs from 'fs'
 import { config } from './config'
 
@@ -14,7 +15,7 @@ const Client = new S3Client({
     }
 })
 
-export const uploadFile = async (pathFile: string, keyFile: string, deleteFileLocal: boolean = true): Promise<ServiceOutputTypes> => {
+export const uploadFile = async (pathFile: string, keyFile: string, deleteFileLocal: boolean = true): Promise<PutObjectCommandOutput> => {
     const command = new GetObjectCommand({
         Bucket: config.minio.bucketName,
         Key: keyFile
@@ -52,7 +53,7 @@ export const getFile = async (keyFile: string): Promise<GetObjectCommandOutput> 
     return await Client.send(command)
 }
 
-export const deleteFile = async (keyFile: string): Promise<ServiceOutputTypes> => {
+export const deleteFile = async (keyFile: string): Promise<DeleteObjectCommandOutput> => {
     const command = new DeleteObjectCommand({
         Bucket: config.minio.bucketName,
         Key: keyFile
@@ -65,6 +66,27 @@ export const getFiles = async (prefix: string): Promise<ListObjectsCommandOutput
     const command = new ListObjectsCommand({
         Bucket: config.minio.bucketName,
         Prefix: prefix
+    })
+
+    return await Client.send(command)
+}
+
+export const isExistFile = async (keyFile: string): Promise<Boolean> => new Promise((res, rej) => {
+    const command = new GetObjectCommand({
+        Bucket: config.minio.bucketName,
+        Key: keyFile
+    })
+
+    Client.send(command)
+        .then(() => res(true))
+        .catch(err => (err as any).message == 'The specified key does not exist.' ? res(false) : rej(err))
+})
+
+export const uploadBufferFile = async (keyFile: string, data: Buffer): Promise<PutObjectCommandOutput> => {
+    const command = new PutObjectCommand({
+        Bucket: config.minio.bucketName,
+        Key: keyFile,
+        Body: data
     })
 
     return await Client.send(command)
