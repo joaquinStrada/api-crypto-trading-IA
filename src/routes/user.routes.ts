@@ -69,7 +69,7 @@ import cookieParser from 'cookie-parser'
  *           type: file
  *           description: La imagen de perfil del usuario
  *           required: false
- *     ErrorInputs:
+ *     ErrorInputsUser:
  *       type: object
  *       summary: Error en el envio de datos
  *       properties:
@@ -88,8 +88,8 @@ import cookieParser from 'cookie-parser'
  *           description: Los detalles del error
  *           required: true
  *           items:
- *             $ref: '#/components/schemas/ErrorDetail'
- *     ErrorDetail:
+ *             $ref: '#/components/schemas/ErrorDetailUser'
+ *     ErrorDetailUser:
  *       type: object
  *       summary: Detalles del error en el envio de datos
  *       properties:
@@ -221,7 +221,7 @@ router.use(cookieParser())
 
 /**
  * @swagger
- * /api/v1/user/login:
+ * /api/v1/users/login:
  *   post:
  *     summary: Iniciar sesion
  *     tags: [User]
@@ -296,7 +296,7 @@ router.post('/login', login)
 
 /**
  * @swagger
- * /api/v1/user/register:
+ * /api/v1/users/register:
  *   post:
  *     summary: Registrar un nuevo usuario
  *     tags: [User]
@@ -317,7 +317,7 @@ router.post('/login', login)
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorInputs'
+ *               $ref: '#/components/schemas/ErrorInputsUser'
  *       422:
  *         description: El email ya está registrado
  *         content:
@@ -519,7 +519,7 @@ router.get('/image/:imageName', validateToken, getProfileImage)
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorInputs'
+ *               $ref: '#/components/schemas/ErrorInputsUser'
  *       401:
  *         description: Acceso denegado
  *         content:

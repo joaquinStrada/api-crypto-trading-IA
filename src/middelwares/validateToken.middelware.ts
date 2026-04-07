@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt from 'jsonwebtoken'
 import { config } from '../utils/config'
-import { AccessToken, User } from '../interfaces/User.interface'
+import { AccessToken, UserAuthenticate } from '../interfaces/User.interface'
 import { getConnection } from '../database'
 
 const validateToken = async (req: Request, res: Response, next: NextFunction): Promise<Response | void> => {
@@ -25,12 +25,12 @@ const validateToken = async (req: Request, res: Response, next: NextFunction): P
         if (!conn) throw new Error('Error al conectarse a la BD')
         
         // Verificar y Obtener la informacion del usuario
-        const [ user ] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, fullname, email, imageBig, imageMedium, imageSmall FROM users WHERE id = UUID_TO_BIN(?)', [data.userId])
+        const [ user ] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, fullname, email, imageBig, imageMedium, imageSmall FROM users WHERE id = UUID_TO_BIN(?)', [data.userId]) as [UserAuthenticate[], any]
 
-        if (!user || (user as any[]).length !== 1) throw new Error('Usuario no encontrado')
+        if (!user || user.length !== 1) throw new Error('Usuario no encontrado')
         
         // Seguir con la peticion
-        req.user = user[0] as any
+        req.user = user[0] as UserAuthenticate
         next()
     } catch (err) {
         console.error(err)

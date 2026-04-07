@@ -20,6 +20,16 @@ export interface User {
     imageSmall?: string | null
 }
 
+export interface UserAuthenticate {
+    id: string,
+    createdAt: Date,
+    fullname: string,
+    email: string,
+    imageBig?: string | null,
+    imageMedium?: string | null,
+    imageSmall?: string | null
+}
+
 export interface LoginUser {
     email: string,
     password: string

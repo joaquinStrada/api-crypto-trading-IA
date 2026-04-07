@@ -2,12 +2,7 @@ import { Request, Response, NextFunction } from 'express'
 import { getConnection } from '../database'
 
 const validateIdBot = async (req: Request, res: Response, next: NextFunction): Promise <Response | void> => {
-    if (!req.params?.id) {
-        return res.status(400).json({
-            error: true,
-            message: 'Tienes que enviar un id'
-        })
-    }
+    if (!req.params?.id) return next()
 
     const botId = String(req.params.id)
     const userId = String(req.user?.id)
