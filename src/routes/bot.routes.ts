@@ -135,7 +135,7 @@ import validateIdBot from '../middelwares/validateIdBot.middelware'
  *           example: El nombre completo debe tener al menos 6 caracteres
  *     IsNameExist:
  *       type: object
- *       summary: Yas tienes un bot registrado con el mismo nombre
+ *       summary: Ya tienes un bot registrado con el mismo nombre
  *       properties:
  *         error:
  *           type: boolean
@@ -147,6 +147,44 @@ import validateIdBot from '../middelwares/validateIdBot.middelware'
  *           description: el mensaje que devuelve la api
  *           required: true
  *           example: Ya tienes un bot registrado con el mismo nombre
+ *     FileProperties:
+ *       type: object
+ *       summary: Las propiedades de un archivo
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: El nombre del archivo
+ *           required: true
+ *           example: DockerFile
+ *         ext:
+ *           type: string
+ *           description: La extension del archivo
+ *           required: true
+ *           example: ""
+ *         lastModified:
+ *           type: string
+ *           description: La ultima modificacion del archivo
+ *           required: true
+ *           example: 2026-03-31T22:44:06.972Z
+ *         size:
+ *           type: number
+ *           description: El tamaño del archivo en bytes
+ *           required: true
+ *           example: 164
+ *     FileNotFound:
+ *       type: object
+ *       summary: Archivo no encontrado
+ *       properties:
+ *         error:
+ *           type: boolean
+ *           description: indica si la api devuelve un error o no
+ *           required: true
+ *           example: true
+ *         message:
+ *           type: string
+ *           description: El mensaje que devuelve la api
+ *           required: true
+ *           example: Archivo no encontrado
  *   parameters:
  *     IdBot:
  *       in: path
@@ -156,6 +194,14 @@ import validateIdBot from '../middelwares/validateIdBot.middelware'
  *       schema:
  *         type: string
  *         example: 1fa40799-2d53-11f1-b2d7-080027cd356a
+ *     Filename:
+ *       in: path
+ *       name: filename
+ *       description: El nombre del archivo a consultar
+ *       required: true
+ *       schema:
+ *         type: string
+ *         example: DockerFile
  */
 const router = Router()
 
@@ -352,7 +398,7 @@ router.post('/', createBot)
  *     summary: Editar un bot
  *     tags: [Bots]
  *     parameters:
- *       - $ref: '#/components/parameters/idBot'
+ *       - $ref: '#/components/parameters/IdBot'
  *       - $ref: '#/components/parameters/Authorization'
  *     requestBody:
  *       required: true
@@ -466,10 +512,229 @@ router.put('/:id', validateIdBot, updateBot)
  */
 router.delete('/:id', validateIdBot, deleteBot)
 
+/**
+ * @swagger
+ * /api/v1/bots/{idBot}/files:
+ *   get:
+ *     summary: Obtener la lista de archivos de un bot
+ *     tags: [Bots]
+ *     parameters:
+ *       - $ref: '#/components/parameters/IdBot'
+ *       - $ref: '#/components/parameters/Authorization'
+ *     responses:
+ *       200:
+ *         description: La lista de archivos del bot
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               summary: La lista de archivos del bot
+ *               properties:
+ *                 error:
+ *                   type: boolean
+ *                   description: Indica si la api devuelve un error o no
+ *                   required: true
+ *                   example: false
+ *                 data:
+ *                   type: array
+ *                   description: La lista de archivos
+ *                   required: true
+ *                   items:
+ *                     $ref: '#/components/schemas/FileProperties'
+ *                   example: [{"name": "DockerFile","ext": "","lastModified": "2026-03-31T22:44:06.972Z","size": 164},{"name": "README.md","ext": "md","lastModified": "2026-03-31T22:44:06.408Z","size": 0},{"name": "chat.json","ext": "json","lastModified": "2026-04-02T03:57:19.107Z","size": 521},{"name": "main.py","ext": "py","lastModified": "2026-03-31T22:44:07.390Z","size": 0},{"name": "requirements.txt","ext": "txt","lastModified": "2026-03-31T22:44:06.716Z","size": 0}]
+ *       401:
+ *         description: Acceso denegado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AccessDenied'
+ *       404:
+ *         description: Bot no encontrado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/BotNotFound'
+ *       500:
+ *         description: Error del servidor
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               summary: error del servidor al editar el bot
+ *               properties:
+ *                 error:
+ *                   type: boolean
+ *                   description: indica si la api devuelve un error o no
+ *                   required: true
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   description: El mensaje que devuelve la api
+ *                   required: true
+ *                   example: Ha ocurrido un error al recuperar los archivos
+ */
 router.get('/:id/files', validateIdBot, getListedFiles)
 
+/**
+ * @swagger
+ * /api/v1/bots/{idBot}/files/{filename}:
+ *   get:
+ *    summary: Obtener un archivo del bot
+ *    tags: [Bots]
+ *    parameters:
+ *      - $ref: '#/components/parameters/IdBot'
+ *      - $ref: '#/components/parameters/Filename'
+ *      - $ref: '#/components/parameters/Authorization'
+ *    responses:
+ *      200:
+ *        description: El archivo solicitado
+ *        content:
+ *          text/x-dockerfile; charset=utf-8:
+ *            schema:
+ *              type: string
+ *              format: binary
+ *              description: El archivo solicitado
+ *              required: true
+ *              example: "FROM python:3.8-slim-buster\nWORKDIR /app\nCOPY . .\nRUN pip install -r requirements.txt\nCMD [\"python\", \"main.py\"]"
+ *          application/json; charset=utf-8:
+ *            type: string
+ *            format: binary
+ *            description: El archivo solicitado
+ *            required: true
+ *            example: [{"role": "system","content": "Tu eres un asistente diseñado para crear bots de traiding en python, ten en cuenta que tus usuarios son especialistas en programacion y/o trading, y tu tarea sera guiarlos en la creacion de bots de trading rentables, tu objetivo principal es el de generar el codigo para los usuarios teniendo en cuenta que te pagaran 500 USD por programarles un bot de traiding. Los usuarios usan el chat a nivel personal no para rendir cuentas a una empresa en particular."}]
+ *          text/plain; charset=utf-8:
+ *            type: string
+ *            format: binary
+ *            description: El archivo solicitado
+ *            required: true
+ *            example: ""
+ *          text/markdown; charset=utf-8:
+ *            type: string
+ *            format: binary
+ *            description: El archivo solicitado
+ *            required: true
+ *            example: ""
+ *          text/x-python; charset=utf-8:
+ *            type: string
+ *            format: binary
+ *            description: El archivo solicitado
+ *            required: true
+ *            example: ""
+ *      400:
+ *        description: Archivo no encontrado
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/FileNotFound'
+ *      401:
+ *        description: Acceso denegado
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/AccessDenied'
+ *      404:
+ *        description: Bot no encontrado
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BotNotFound'
+ *      500:
+ *        description: Error del servidor
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              summary: error del servidor al editar el bot
+ *              properties:
+ *                error:
+ *                  type: boolean
+ *                  description: indica si la api devuelve un error o no
+ *                  required: true
+ *                  example: true
+ *                message:
+ *                  type: string
+ *                  description: El mensaje que devuelve la api
+ *                  required: true
+ *                  example: Ha ocurrido un error al recuperar el archivo
+ */
 router.get('/:id/files/:filename', validateIdBot, getFile)
 
-router.put('/:id/files/:filename', validateIdBot, urlencoded({ extended: false }), fileUpload(), updateFile)
+/**
+ * @swagger
+ * /api/v1/bots/{idBot}/files/{filename}:
+ *   put:
+ *    summary: Editar un archivo del bot
+ *    tags: [Bots]
+ *    parameters:
+ *      - $ref: '#/components/parameters/IdBot'
+ *      - $ref: '#/components/parameters/Filename'
+ *      - $ref: '#/components/parameters/Authorization'
+ *    requestBody:
+ *      required: true
+ *      content:
+ *        multipart/form-data:
+ *          schema:
+ *            type: object
+ *            summary: El nuevo archivo
+ *            properties:
+ *              file:
+ *                type: file
+ *                description: El archivo a enviar
+ *                required: true
+ *    responses:
+ *      200:
+ *        description: Archivo editado
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              summary: Las propiedades del archivo editado
+ *              properties:
+ *                error:
+ *                  type: boolean
+ *                  description: Indica si hubo un error o no
+ *                  required: true
+ *                  example: false
+ *                data:
+ *                  $ref: '#/components/schemas/FileProperties'
+ *      400:
+ *        description: Error en el envio de datos
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/FileNotFound'
+ *      401:
+ *        description: Acceso denegado
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/AccessDenied'
+ *      404:
+ *        description: Bot no encontrado
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/BotNotFound'
+ *      500:
+ *        description: Error del servidor
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              summary: error del servidor al editar el bot
+ *              properties:
+ *                error:
+ *                  type: boolean
+ *                  description: indica si la api devuelve un error o no
+ *                  required: true
+ *                  example: true
+ *                message:
+ *                  type: string
+ *                  description: El mensaje que devuelve la api
+ *                  required: true
+ *                  example: Ha ocurrido un error al editar un archivo
+ */
+router.put('/:id/files/:filename', validateIdBot, 
+    urlencoded({ extended: false }), fileUpload(), updateFile)
 
 export default router

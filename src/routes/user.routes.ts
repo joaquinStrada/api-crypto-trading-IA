@@ -414,41 +414,42 @@ router.get('/', validateToken, getUser)
  *       200:
  *         description: La foto de perfil
  *         content:
- *           image/jpg:
- *             schema:
- *               type: binary
- *               description: Foto de perfil
- *               required: true
  *           image/jpeg:
  *             schema:
- *               type: binary
- *               description: Foto de perfil
+ *               type: string
+ *               format: binary
  *               required: true
+ *               description: Foto de perfil
  *           image/png:
  *             schema:
- *               type: binary
- *               description: Foto de perfil
+ *               type: string
+ *               format: binary
  *               required: true
+ *               description: Foto de perfil
  *           image/gif:
  *             schema:
- *               type: binary
- *               description: Foto de perfil
+ *               type: string
+ *               format: binary
  *               required: true
+ *               description: Foto de perfil
  *           image/bmp:
  *             schema:
- *               type: binary
- *               description: Foto de perfil
+ *               type: string
+ *               format: binary
  *               required: true
+ *               description: Foto de perfil
  *           image/webp:
  *             schema:
- *               type: binary
- *               description: Foto de perfil
+ *               type: string
+ *               format: binary
  *               required: true
+ *               description: Foto de perfil
  *           image/svg+xml:
  *             schema:
- *               type: binary
- *               description: Foto de perfil
+ *               type: string
+ *               format: binary
  *               required: true
+ *               description: Foto de perfil
  *       401:
  *         description: Acceso denegado
  *         content:

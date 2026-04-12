@@ -260,6 +260,7 @@ export const getFile = async (req: Request, res: Response): Promise<void> => {
        
        // Seteamos los headers
        if (path.extname(filename) == '') res.header('Content-Type', 'text/x-dockerfile; charset=utf-8')
+       else if (path.extname(filename) == '.py') res.header('Content-Type', 'text/x-python; charset=utf-8')
        else res.header('Content-type', String(lookup(path.extname(filename))) + '; charset=utf-8')
     
        // Devolvemos el archivo
