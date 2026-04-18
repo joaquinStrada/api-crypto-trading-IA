@@ -20,7 +20,7 @@ export const getBots = async (req: Request, res: Response): Promise<void> => {
         if (!conn) throw new Error('Error al conectarse a la BD')
 
         // Recuperamos los bots
-        const [Bots] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model FROM bots WHERE userId = UUID_TO_BIN(?)', [userId])
+        const [Bots] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model, bin_to_uuid(deployId) as deployId FROM bots WHERE userId = UUID_TO_BIN(?)', [userId])
 
         res.json({
             error: false,
@@ -46,7 +46,7 @@ export const getBot = async (req: Request, res: Response): Promise<Response | vo
         if (!conn) throw new Error('Error al conectarse a la BD')
 
         // Recuperamos el bot
-        const [Bot] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model FROM bots WHERE id = UUID_TO_BIN(?)', [botId])
+        const [Bot] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model, bin_to_uuid(deployId) as deployId FROM bots WHERE id = UUID_TO_BIN(?)', [botId])
 
         res.json({
             error: false,
@@ -112,7 +112,7 @@ export const createBot = async (req: Request, res: Response): Promise<Response |
         }
 
         // Responder al usuario
-        const [BotDb] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model FROM bots WHERE id = UUID_TO_BIN(?)', [newBot.id])
+        const [BotDb] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model, bin_to_uuid(deployId) as deployId FROM bots WHERE id = UUID_TO_BIN(?)', [newBot.id])
 
         res.json({
             error: false,
@@ -164,7 +164,7 @@ export const updateBot = async (req: Request, res: Response): Promise<Response |
             [editBot.name, editBot.description, editBot.model, editBot.id])
 
         // Respondemos con el bot editado
-        const [botBD] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model FROM bots WHERE id = UUID_TO_BIN(?)', [editBot.id])
+        const [botBD] = await conn.query('SELECT BIN_TO_UUID(id) as id, createdAt, name, description, model, bin_to_uuid(deployId) as deployId FROM bots WHERE id = UUID_TO_BIN(?)', [editBot.id])
 
         res.json({
             error: false,

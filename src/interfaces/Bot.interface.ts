@@ -4,5 +4,7 @@ export interface Bot {
     name: string,
     description: string,
     model: string,
+    deployId?: string,
+    status?: string,
     userId?: string
 }

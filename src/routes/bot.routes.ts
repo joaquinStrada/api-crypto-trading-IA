@@ -42,6 +42,11 @@ import validateIdBot from '../middelwares/validateIdBot.middelware'
  *           description: El modelo de IA que usa el bot para el chat
  *           required: true
  *           example: llama-3.1-8b-instant
+ *         deployId:
+ *           type: string
+ *           description: El ultimo deploy que se hizo en el bot
+ *           required: true
+ *           example: null
  *     BotNotFound:
  *       type: object
  *       summary: Bot no encontrado

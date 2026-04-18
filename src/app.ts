@@ -5,7 +5,9 @@ import { config } from './utils/config'
 
 import userRouter from './routes/user.routes'
 import botRouter from './routes/bot.routes'
+import deployRouter from './routes/deploy.routes'
 import validateToken from './middelwares/validateToken.middelware'
+import validateIdBot from './middelwares/validateIdBot.middelware'
 
 // Swagger
 import swaggerUI from 'swagger-ui-express'
@@ -28,6 +30,7 @@ app.use(cors({
 // Routes
 app.use('/api/v1/users', userRouter)
 app.use('/api/v1/bots', validateToken, botRouter)
+app.use('/api/v1/bots/:id/deploy', validateToken, validateIdBot, deployRouter)
 
 // Config swagger
 const specs = swaggerJsDoc(options)
