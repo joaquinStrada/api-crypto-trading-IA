@@ -2,7 +2,12 @@ import { Request, Response, NextFunction } from 'express'
 import { getConnection } from '../database'
 
 const validateIdBot = async (req: Request, res: Response, next: NextFunction): Promise <Response | void> => {
-    if (!req.params?.id) return next()
+    if (!req.params?.id) {
+        return res.status(400).json({
+            error: true,
+            message: 'El id del bot es requerido en la ruta'
+        })
+    }
 
     const botId = String(req.params.id)
     const userId = String(req.user?.id)
@@ -23,6 +28,7 @@ const validateIdBot = async (req: Request, res: Response, next: NextFunction): P
             })
         }
 
+        req.botId = botId
         next()
     } catch (err) {
         if ((err as any).code == 'ER_WRONG_VALUE_FOR_TYPE') {

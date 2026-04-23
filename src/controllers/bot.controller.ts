@@ -37,7 +37,7 @@ export const getBots = async (req: Request, res: Response): Promise<void> => {
 }
 
 export const getBot = async (req: Request, res: Response): Promise<Response | void> => {
-    const botId = String(req.params.id)
+    const botId = req.botId || ''
 
     try {
         // Validamos la conexion a la BD
@@ -129,7 +129,7 @@ export const createBot = async (req: Request, res: Response): Promise<Response |
 
 export const updateBot = async (req: Request, res: Response): Promise<Response | void> => {
     const editBot: Bot = req.body || {}
-    editBot.id = String(req.params.id)
+    editBot.id = req.botId || ''
     const userId = String(req.user?.id)
 
     try {
@@ -187,7 +187,7 @@ export const updateBot = async (req: Request, res: Response): Promise<Response |
 }
 
 export const deleteBot = async (req: Request, res: Response): Promise<void> => {
-    const botId = String(req.params.id)
+    const botId = req.botId || ''
 
     try {
         // Validamos la conexion a la BD
@@ -218,7 +218,7 @@ export const deleteBot = async (req: Request, res: Response): Promise<void> => {
 }
 
 export const getListedFiles = async (req: Request, res: Response): Promise<void> => {
-    const botId = String(req.params.id)
+    const botId = req.botId || ''
 
     try {
         const listedFiles = await getFiles(`bots/${botId}`)
@@ -252,7 +252,7 @@ export const getListedFiles = async (req: Request, res: Response): Promise<void>
 }
 
 export const getFile = async (req: Request, res: Response): Promise<void> => {
-    const botId = String(req.params.id)
+    const botId = req.botId || ''
     const filename = String(req.params.filename)
 
     try {
@@ -283,7 +283,7 @@ export const getFile = async (req: Request, res: Response): Promise<void> => {
 }
 
 export const updateFile = async (req: Request, res: Response): Promise<Response | void> => {
-    const botId = String(req.params.id)
+    const botId = req.botId || ''
     const filename = String(req.params.filename)
     const File:UploadedFile | UploadedFile[] | undefined = req.files?.file
 
